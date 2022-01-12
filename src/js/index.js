@@ -1,21 +1,10 @@
-/*
-- Todo1. 메뉴 추가 <br>
-
-  - 메뉴의 이름을 입력 받고, 확인 버튼을 누르면 메뉴가 추가된다.
-  - 메뉴의 이름을 입력 받고, 엔터키 입력하면 메뉴가 추가돤다.
-  - 메뉴가 추가되고 나면, input은 빈 값이 된다.
-  - 사용자 입력이 빈 값이라면, 메뉴는 추가되지 않는다.
-
-  - 추가되는 메뉴의 아래 마크업은 <ul id="espresso-menu-list" class="mt-3 pl-0"></ul> 안에 삽입해야 한다.
-  - 추가 시 변경된 메뉴 개수를 상단에 보여준다.
-
-*/
-
 function App() {
   const $ul = document.getElementById("espresso-menu-list");
-
+  /*
+  menu: {id:1, name:킹에스프레소}
+  */
   this.state = {
-    menus: [],
+    menus: [{ id: 1, name: "킹에스프레소" }],
   };
 
   this.setState = (newState) => {
@@ -25,9 +14,27 @@ function App() {
     this.renderCount();
   };
 
-  this.addMenu = (menu) => {
+  //* 상태변경 Methods
+  this.addMenu = (name) => {
     const { menus } = this.state;
+    const menu = { id: Math.max(...menus.map((v) => v.id)) + 1, name };
     this.setState({ menus: [...menus, menu] });
+  };
+
+  this.editMenu = (id, name) => {
+    const { menus } = this.state;
+    this.setState({
+      menus: menus.map((menu) => {
+        return menu.id === id ? { id, name } : menu;
+      }),
+    });
+  };
+
+  this.removeMenu = (id) => {
+    const { menus } = this.state;
+    this.setState({
+      menus: menus.filter((menu) => menu.id !== id),
+    });
   };
 
   //* View
@@ -35,21 +42,23 @@ function App() {
     const { menus } = this.state;
     $ul.innerHTML = `${menus
       .map(
-        (v) => `<li class="menu-list-item d-flex items-center py-2">
-    <span class="w-100 pl-2 menu-name">${v}</span>
-    <button
-      type="button"
-      class="bg-gray-50 text-gray-500 text-sm mr-1 menu-edit-button"
-    >
-      수정
-    </button>
-    <button
-      type="button"
-      class="bg-gray-50 text-gray-500 text-sm menu-remove-button"
-    >
-      삭제
-    </button>
-  </li>`
+        (m) => `
+        <li class="menu-list-item d-flex items-center py-2" data-id="${m.id}">
+          <span class="w-100 pl-2 menu-name">${m.name}</span>
+          <button
+            type="button"
+            class="bg-gray-50 text-gray-500 text-sm mr-1 menu-edit-button"
+          >
+            수정
+          </button>
+          <button
+            type="button"
+            class="bg-gray-50 text-gray-500 text-sm menu-remove-button"
+          >
+            삭제
+          </button>
+        </li>
+        `
       )
       .join("")}`;
   };
@@ -82,6 +91,19 @@ function App() {
       if ($input.value === "") return;
       this.addMenu($input.value);
       $input.value = "";
+    });
+
+  //* 수정 삭제 이벤트 (이벤트위임 by 버블링)
+  document
+    .getElementById("espresso-menu-list")
+    .addEventListener("click", ({ target }) => {
+      const id = Number(target.closest("[data-id]").dataset.id);
+      if (target.classList.contains("menu-edit-button")) {
+        const editName = prompt("수정 할 메뉴이름은 무엇인가요?");
+        this.editMenu(id, editName);
+      } else if (target.classList.contains("menu-remove-button")) {
+        confirm(`정말 ${id}번 메뉴를 삭제하시겠습니까?`) && this.removeMenu(id);
+      }
     });
 }
 new App();

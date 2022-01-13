@@ -1,14 +1,29 @@
 function App() {
   const $ = (selector) => document.querySelector(selector);
+  const getCurrentMenuList = (category) => [
+    `${category}MenuList`,
+    this.state[`${category}MenuList`],
+  ];
+  const MENU_TITLE = {
+    espresso: "☕ 에스프레소",
+    frappuccino: "🥤 프라푸치노",
+    blended: "🍹 블렌디드",
+    teavana: "🫖 티바나",
+    desert: "🍰 디저트",
+  };
 
   this.init = () => {
     this.setState(JSON.parse(localStorage.getItem("menuList")));
-    this.renderCount();
-    this.renderList();
+    this.render();
   };
 
   this.state = {
+    selectedCategory: "espresso",
     espressoMenuList: [],
+    frappuccinoMenuList: [],
+    blendedMenuList: [],
+    teavanaMenuList: [],
+    desertMenuList: [],
     //menu: {id:1, name:킹에스프레소, isSoldOut: true}
   };
 
@@ -20,7 +35,7 @@ function App() {
 
   this.render = () => {
     this.renderList();
-    this.renderCount();
+    this.renderHeader();
     this.mounted();
   };
 
@@ -30,36 +45,56 @@ function App() {
 
   //* 상태변경 Methods
   this.addMenu = (name) => {
-    const { espressoMenuList } = this.state;
+    const [currentMenuKey, currentMenuList] = getCurrentMenuList(
+      this.state.selectedCategory
+    );
     const menu = {
-      id: Math.max(...espressoMenuList.map((v) => v.id), 0) + 1,
+      id: Math.max(...currentMenuList.map((v) => v.id), 0) + 1,
       name,
     };
-    this.setState({ espressoMenuList: [...espressoMenuList, menu] });
+    this.setState({ [currentMenuKey]: [...currentMenuList, menu] });
   };
 
   this.editMenu = (id, name) => {
-    const { espressoMenuList } = this.state;
+    const [currentMenuKey, currentMenuList] = getCurrentMenuList(
+      this.state.selectedCategory
+    );
     this.setState({
-      espressoMenuList: espressoMenuList.map((menu) => {
+      [currentMenuKey]: currentMenuList.map((menu) => {
         return menu.id === id ? { id, name } : menu;
       }),
     });
   };
 
   this.removeMenu = (id) => {
-    const { espressoMenuList } = this.state;
+    const [currentMenuKey, currentMenuList] = getCurrentMenuList(
+      this.state.selectedCategory
+    );
     this.setState({
-      espressoMenuList: espressoMenuList.filter((menu) => menu.id !== id),
+      [currentMenuKey]: currentMenuList.filter((menu) => menu.id !== id),
     });
   };
 
   //* View
+  this.renderHeader = () => {
+    const [_, currentMenuList] = getCurrentMenuList(
+      this.state.selectedCategory
+    );
+
+    $(".heading > h2").textContent = `${
+      MENU_TITLE[this.state.selectedCategory]
+    } 메뉴관리`;
+    $(".menu-count").innerHTML = `총 ${currentMenuList.length}개`;
+  };
+
   this.renderList = () => {
-    const { espressoMenuList } = this.state;
-    const menuItemTemplate = (espressoMenu) => `
-        <li class="menu-list-item d-flex items-center py-2" data-id="${espressoMenu.id}">
-          <span class="w-100 pl-2 menu-name">${espressoMenu.name}</span>
+    const [_, currentMenuList] = getCurrentMenuList(
+      this.state.selectedCategory
+    );
+
+    const menuItemTemplate = (currentMenuList) => `
+        <li class="menu-list-item d-flex items-center py-2" data-id="${currentMenuList.id}">
+          <span class="w-100 pl-2 menu-name">${currentMenuList.name}</span>
           <button
             type="button"
             class="bg-gray-50 text-gray-500 text-sm mr-1 menu-edit-button"
@@ -74,26 +109,23 @@ function App() {
           </button>
         </li>
     `;
-    $("#espresso-menu-list").innerHTML = `
-      ${espressoMenuList.map((menu) => menuItemTemplate(menu)).join("")}
+    $("#menu-list").innerHTML = `
+      ${currentMenuList.map((menu) => menuItemTemplate(menu)).join("")}
       `;
-  };
-
-  this.renderCount = () => {
-    const { espressoMenuList } = this.state;
-    $(".menu-count").innerHTML = `총 ${espressoMenuList.length}개`;
   };
 
   //* Event처리
   const handleAddMenu = () => {
-    const $input = $("#espresso-menu-name");
+    const $input = $("#menu-name");
     if ($input.value === "") return;
     this.addMenu($input.value);
     $input.value = "";
   };
   const handleEditMenu = (id) => {
-    const menuName = this.state.espressoMenuList.filter((m) => m.id === id)[0]
-      .name;
+    const [_, currentMenuList] = getCurrentMenuList(
+      this.state.selectedCategory
+    );
+    const menuName = currentMenuList.filter((m) => m.id === id)[0].name;
     const editedMenuName = prompt("수정 할 메뉴이름은 무엇인가요?", menuName);
 
     if (!editedMenuName) return;
@@ -102,19 +134,22 @@ function App() {
   const handleRemoveMenu = (id) => {
     confirm(`정말 ${id}번 메뉴를 삭제하시겠습니까?`) && this.removeMenu(id);
   };
+  const handleChangeMenu = (category) => {
+    this.setState({ selectedCategory: category });
+  };
 
-  $("#espresso-menu-form").addEventListener("submit", (e) => {
+  $("#menu-form").addEventListener("submit", (e) => {
     e.preventDefault();
   });
 
-  $("#espresso-menu-name").addEventListener("keyup", ({ key }) => {
+  $("#menu-name").addEventListener("keyup", ({ key }) => {
     if (key !== "Enter") return;
     handleAddMenu();
   });
 
-  $("#espresso-menu-submit-button").addEventListener("click", handleAddMenu);
+  $("#menu-submit-button").addEventListener("click", handleAddMenu);
 
-  $("#espresso-menu-list").addEventListener("click", ({ target }) => {
+  $("#menu-list").addEventListener("click", ({ target }) => {
     const id = Number(target.closest("[data-id]").dataset.id);
 
     if (target.classList.contains("menu-edit-button")) {
@@ -124,6 +159,10 @@ function App() {
     }
   });
 
+  $("header > nav").addEventListener("click", ({ target }) => {
+    const category = target.dataset.categoryName;
+    handleChangeMenu(category);
+  });
   this.init();
 }
 new App();

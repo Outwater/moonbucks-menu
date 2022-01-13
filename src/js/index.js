@@ -2,20 +2,30 @@ function App() {
   const $ = (selector) => document.querySelector(selector);
 
   this.init = () => {
+    this.setState(JSON.parse(localStorage.getItem("menuList")));
     this.renderCount();
     this.renderList();
   };
 
   this.state = {
     espressoMenuList: [],
-    //menu: {id:1, name:킹에스프레소}
+    //menu: {id:1, name:킹에스프레소, isSoldOut: true}
   };
 
-  this.setState = (newState) => {
+  this.setState = async (newState) => {
     this.state = { ...this.state, ...newState };
     console.log("state변경:", this.state);
+    this.render();
+  };
+
+  this.render = () => {
     this.renderList();
     this.renderCount();
+    this.mounted();
+  };
+
+  this.mounted = () => {
+    localStorage.setItem("menuList", JSON.stringify(this.state));
   };
 
   //* 상태변경 Methods

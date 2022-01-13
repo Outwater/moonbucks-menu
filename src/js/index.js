@@ -51,6 +51,7 @@ function App() {
     const menu = {
       id: Math.max(...currentMenuList.map((v) => v.id), 0) + 1,
       name,
+      isSoldOut: false,
     };
     this.setState({ [currentMenuKey]: [...currentMenuList, menu] });
   };
@@ -61,7 +62,7 @@ function App() {
     );
     this.setState({
       [currentMenuKey]: currentMenuList.map((menu) => {
-        return menu.id === id ? { id, name } : menu;
+        return menu.id === id ? { ...menu, name } : menu;
       }),
     });
   };
@@ -92,9 +93,18 @@ function App() {
       this.state.selectedCategory
     );
 
-    const menuItemTemplate = (currentMenuList) => `
-        <li class="menu-list-item d-flex items-center py-2" data-id="${currentMenuList.id}">
-          <span class="w-100 pl-2 menu-name">${currentMenuList.name}</span>
+    const menuItemTemplate = (currentMenu) => `
+        <li class="menu-list-item d-flex items-center py-2"
+          data-id="${currentMenu.id}">
+          <span class="w-100 pl-2 menu-name ${
+            currentMenu.isSoldOut ? "sold-out" : null
+          }">${currentMenu.name}</span>
+          <button
+            type="button"
+            class="bg-gray-50 text-gray-500 text-sm mr-1 menu-sold-out-button"
+          >
+            품절
+          </button>
           <button
             type="button"
             class="bg-gray-50 text-gray-500 text-sm mr-1 menu-edit-button"
@@ -134,6 +144,16 @@ function App() {
   const handleRemoveMenu = (id) => {
     confirm(`정말 ${id}번 메뉴를 삭제하시겠습니까?`) && this.removeMenu(id);
   };
+  const handleClickSoldout = (id) => {
+    const [currentMenuKey, currentMenuList] = getCurrentMenuList(
+      this.state.selectedCategory
+    );
+    const newMenuList = currentMenuList.map((menu) =>
+      menu.id === id ? { ...menu, isSoldOut: !menu.isSoldOut } : menu
+    );
+    this.setState({ [currentMenuKey]: newMenuList });
+  };
+
   const handleChangeMenu = (category) => {
     this.setState({ selectedCategory: category });
   };
@@ -156,6 +176,8 @@ function App() {
       handleEditMenu(id);
     } else if (target.classList.contains("menu-remove-button")) {
       handleRemoveMenu(id);
+    } else if (target.classList.contains("menu-sold-out-button")) {
+      handleClickSoldout(id);
     }
   });
 

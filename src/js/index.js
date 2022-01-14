@@ -1,29 +1,20 @@
+import { $ } from "../utils/dom.js";
 function App() {
-  const $ = (selector) => document.querySelector(selector);
-  const getCurrentMenuList = (category) => [
-    `${category}MenuList`,
-    this.state[`${category}MenuList`],
-  ];
-  const MENU_TITLE = {
-    espresso: "☕ 에스프레소",
-    frappuccino: "🥤 프라푸치노",
-    blended: "🍹 블렌디드",
-    teavana: "🫖 티바나",
-    desert: "🍰 디저트",
-  };
-
+  //* Core
   this.init = () => {
     this.setState(JSON.parse(localStorage.getItem("menuList")));
+    this.setState({ category: "espresso" });
+    setEvent();
     this.render();
   };
 
   this.state = {
-    selectedCategory: "espresso",
-    espressoMenuList: [],
-    frappuccinoMenuList: [],
-    blendedMenuList: [],
-    teavanaMenuList: [],
-    desertMenuList: [],
+    category: "espresso",
+    espresso: [],
+    frappuccino: [],
+    blended: [],
+    teavana: [],
+    desert: [],
     //menu: {id:1, name:킹에스프레소, isSoldOut: true}
   };
 
@@ -34,8 +25,8 @@ function App() {
   };
 
   this.render = () => {
-    this.renderList();
     this.renderHeader();
+    this.renderList();
     this.mounted();
   };
 
@@ -43,55 +34,19 @@ function App() {
     localStorage.setItem("menuList", JSON.stringify(this.state));
   };
 
-  //* 상태변경 Methods
-  this.addMenu = (name) => {
-    const [currentMenuKey, currentMenuList] = getCurrentMenuList(
-      this.state.selectedCategory
-    );
-    const menu = {
-      id: Math.max(...currentMenuList.map((v) => v.id), 0) + 1,
-      name,
-      isSoldOut: false,
-    };
-    this.setState({ [currentMenuKey]: [...currentMenuList, menu] });
-  };
-
-  this.editMenu = (id, name) => {
-    const [currentMenuKey, currentMenuList] = getCurrentMenuList(
-      this.state.selectedCategory
-    );
-    this.setState({
-      [currentMenuKey]: currentMenuList.map((menu) => {
-        return menu.id === id ? { ...menu, name } : menu;
-      }),
-    });
-  };
-
-  this.removeMenu = (id) => {
-    const [currentMenuKey, currentMenuList] = getCurrentMenuList(
-      this.state.selectedCategory
-    );
-    this.setState({
-      [currentMenuKey]: currentMenuList.filter((menu) => menu.id !== id),
-    });
-  };
-
   //* View
   this.renderHeader = () => {
-    const [_, currentMenuList] = getCurrentMenuList(
-      this.state.selectedCategory
-    );
-
+    const category = this.state.category;
+    const currentMenuList = this.state[category];
     $(".heading > h2").textContent = `${
-      MENU_TITLE[this.state.selectedCategory]
+      $(`[data-category-name='${category}']`).textContent
     } 메뉴관리`;
     $(".menu-count").innerHTML = `총 ${currentMenuList.length}개`;
   };
 
   this.renderList = () => {
-    const [_, currentMenuList] = getCurrentMenuList(
-      this.state.selectedCategory
-    );
+    const category = this.state.category;
+    const currentMenuList = this.state[category];
 
     const menuItemTemplate = (currentMenu) => `
         <li class="menu-list-item d-flex items-center py-2"
@@ -125,66 +80,99 @@ function App() {
   };
 
   //* Event처리
-  const handleAddMenu = () => {
-    const $input = $("#menu-name");
-    if ($input.value === "") return;
-    this.addMenu($input.value);
-    $input.value = "";
+  const handleAddMenu = (name) => {
+    const category = this.state.category;
+    const currentMenuList = this.state[category];
+
+    const menu = {
+      id: Math.max(...currentMenuList.map((v) => v.id), 0) + 1,
+      name,
+      isSoldOut: false,
+    };
+    this.setState({ [category]: [...currentMenuList, menu] });
   };
   const handleEditMenu = (id) => {
-    const [_, currentMenuList] = getCurrentMenuList(
-      this.state.selectedCategory
-    );
-    const menuName = currentMenuList.filter((m) => m.id === id)[0].name;
+    const category = this.state.category;
+    const menuList = [...this.state[category]];
+
+    const menuName = menuList.filter((m) => m.id === id)[0].name;
     const editedMenuName = prompt("수정 할 메뉴이름은 무엇인가요?", menuName);
 
     if (!editedMenuName) return;
-    this.editMenu(id, editedMenuName);
+    const editIdx = menuList.findIndex((item) => item.id === id);
+    menuList[editIdx].name = editedMenuName;
+
+    this.setState({ [category]: menuList });
   };
   const handleRemoveMenu = (id) => {
-    confirm(`정말 ${id}번 메뉴를 삭제하시겠습니까?`) && this.removeMenu(id);
+    if (!confirm(`정말 ${id}번 메뉴를 삭제하시겠습니까?`)) return;
+
+    const category = this.state.category;
+    const currentMenuList = this.state[category];
+
+    this.setState({
+      [category]: currentMenuList.filter((menu) => menu.id !== id),
+    });
   };
   const handleClickSoldout = (id) => {
-    const [currentMenuKey, currentMenuList] = getCurrentMenuList(
-      this.state.selectedCategory
-    );
-    const newMenuList = currentMenuList.map((menu) =>
-      menu.id === id ? { ...menu, isSoldOut: !menu.isSoldOut } : menu
-    );
-    this.setState({ [currentMenuKey]: newMenuList });
+    const category = this.state.category;
+    const menuList = [...this.state[category]];
+    const index = menuList.findIndex((menu) => menu.id === id);
+
+    menuList[index].isSoldOut = !menuList[index].isSoldOut;
+    this.setState({ [category]: menuList });
   };
 
-  const handleChangeMenu = (category) => {
-    this.setState({ selectedCategory: category });
+  const handleChangeCategory = (category) => {
+    this.setState({ category });
   };
 
-  $("#menu-form").addEventListener("submit", (e) => {
-    e.preventDefault();
-  });
+  const setEvent = () => {
+    $("#menu-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+    });
 
-  $("#menu-name").addEventListener("keyup", ({ key }) => {
-    if (key !== "Enter") return;
-    handleAddMenu();
-  });
+    $("#menu-name").addEventListener("keyup", ({ key }) => {
+      if (key !== "Enter") return;
+      const $input = $("#menu-name");
+      if ($input.value === "") return;
+      handleAddMenu($input.value);
+      $input.value = "";
+    });
 
-  $("#menu-submit-button").addEventListener("click", handleAddMenu);
+    $("#menu-submit-button").addEventListener("click", () => {
+      const $input = $("#menu-name");
+      if ($input.value === "") return;
+      handleAddMenu($input.value);
+      $input.value = "";
+    });
 
-  $("#menu-list").addEventListener("click", ({ target }) => {
-    const id = Number(target.closest("[data-id]").dataset.id);
+    $("#menu-list").addEventListener("click", ({ target }) => {
+      const id = Number(target.closest("[data-id]").dataset.id);
 
-    if (target.classList.contains("menu-edit-button")) {
-      handleEditMenu(id);
-    } else if (target.classList.contains("menu-remove-button")) {
-      handleRemoveMenu(id);
-    } else if (target.classList.contains("menu-sold-out-button")) {
-      handleClickSoldout(id);
-    }
-  });
+      if (target.classList.contains("menu-edit-button")) {
+        handleEditMenu(id);
+        return;
+      }
 
-  $("header > nav").addEventListener("click", ({ target }) => {
-    const category = target.dataset.categoryName;
-    handleChangeMenu(category);
-  });
-  this.init();
+      if (target.classList.contains("menu-remove-button")) {
+        handleRemoveMenu(id);
+        return;
+      }
+
+      if (target.classList.contains("menu-sold-out-button")) {
+        handleClickSoldout(id);
+        return;
+      }
+    });
+
+    $("header > nav").addEventListener("click", ({ target }) => {
+      if (!target.classList.contains("cafe-category-name")) return;
+      const category = target.dataset.categoryName;
+      handleChangeCategory(category);
+    });
+  };
 }
-new App();
+const app = new App();
+
+app.init();

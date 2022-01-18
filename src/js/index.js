@@ -1,21 +1,15 @@
 import { $ } from "../utils/dom.js";
+const BASE_URL = "http://localhost:3000/api";
+
 function App() {
   //* Core
   this.init = () => {
-    this.setState(JSON.parse(localStorage.getItem("menuList")));
     this.setState({ category: "espresso" });
     setEvent();
-    this.render();
   };
 
   this.state = {
     category: "espresso",
-    espresso: [],
-    frappuccino: [],
-    blended: [],
-    teavana: [],
-    desert: [],
-    //menu: {id:1, name:킹에스프레소, isSoldOut: true}
   };
 
   this.setState = async (newState) => {
@@ -24,30 +18,30 @@ function App() {
     this.render();
   };
 
-  this.render = () => {
-    this.renderHeader();
-    this.renderList();
+  this.render = async () => {
+    // 현재 선택된 리스트를 불러와서 해당 부분 렌더링
+    const currentMenuList = await fetch(
+      `${BASE_URL}/category/${this.state.category}/menu`
+    ).then((res) => res.json());
+    console.log("render실행");
+
+    this.renderHeader(currentMenuList);
+    this.renderList(currentMenuList);
     this.mounted();
   };
 
-  this.mounted = () => {
-    localStorage.setItem("menuList", JSON.stringify(this.state));
-  };
+  this.mounted = () => {};
 
   //* View
-  this.renderHeader = () => {
+  this.renderHeader = (currentMenuList) => {
     const category = this.state.category;
-    const currentMenuList = this.state[category];
     $(".heading > h2").textContent = `${
       $(`[data-category-name='${category}']`).textContent
     } 메뉴관리`;
     $(".menu-count").innerHTML = `총 ${currentMenuList.length}개`;
   };
 
-  this.renderList = () => {
-    const category = this.state.category;
-    const currentMenuList = this.state[category];
-
+  this.renderList = (currentMenuList) => {
     const menuItemTemplate = (currentMenu) => `
         <li class="menu-list-item d-flex items-center py-2"
           data-id="${currentMenu.id}">
@@ -80,47 +74,57 @@ function App() {
   };
 
   //* Event처리
-  const handleAddMenu = (name) => {
+  const handleAddMenu = async (name) => {
     const category = this.state.category;
-    const currentMenuList = this.state[category];
+    const data = await fetch(`${BASE_URL}/category/${category}/menu`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name }),
+    })
+      .then((res) => res.json())
+      .catch((e) => console.log(e));
 
-    const menu = {
-      id: Math.max(...currentMenuList.map((v) => v.id), 0) + 1,
-      name,
-      isSoldOut: false,
-    };
-    this.setState({ [category]: [...currentMenuList, menu] });
+    console.log("추가된 data: ", data);
+    data && this.render();
   };
-  const handleEditMenu = (id) => {
+  const handleEditMenu = async (id) => {
     const category = this.state.category;
-    const menuList = [...this.state[category]];
-
-    const menuName = menuList.filter((m) => m.id === id)[0].name;
+    const menuName = "기존이름";
     const editedMenuName = prompt("수정 할 메뉴이름은 무엇인가요?", menuName);
 
     if (!editedMenuName) return;
-    const editIdx = menuList.findIndex((item) => item.id === id);
-    menuList[editIdx].name = editedMenuName;
-
-    this.setState({ [category]: menuList });
+    const data = await fetch(`${BASE_URL}/category/${category}/menu/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: editedMenuName }),
+    }).then((res) => res.json());
+    console.log("수정된 data: ", data);
+    data && this.render();
   };
-  const handleRemoveMenu = (id) => {
+  const handleRemoveMenu = async (id) => {
     if (!confirm(`정말 ${id}번 메뉴를 삭제하시겠습니까?`)) return;
 
     const category = this.state.category;
-    const currentMenuList = this.state[category];
-
-    this.setState({
-      [category]: currentMenuList.filter((menu) => menu.id !== id),
+    const data = await fetch(`${BASE_URL}/category/${category}/menu/${id}`, {
+      method: "DELETE",
     });
+    data && this.render();
   };
-  const handleClickSoldout = (id) => {
-    const category = this.state.category;
-    const menuList = [...this.state[category]];
-    const index = menuList.findIndex((menu) => menu.id === id);
 
-    menuList[index].isSoldOut = !menuList[index].isSoldOut;
-    this.setState({ [category]: menuList });
+  const handleClickSoldout = async (id) => {
+    const category = this.state.category;
+    const data = await fetch(
+      `${BASE_URL}/category/${category}/menu/${id}/soldout`,
+      {
+        method: "PUT",
+      }
+    ).then((res) => res.json());
+    console.log("품절처리한 data: ", data);
+    data && this.render();
   };
 
   const handleChangeCategory = (category) => {
@@ -148,7 +152,7 @@ function App() {
     });
 
     $("#menu-list").addEventListener("click", ({ target }) => {
-      const id = Number(target.closest("[data-id]").dataset.id);
+      const id = target.closest("[data-id]").dataset.id;
 
       if (target.classList.contains("menu-edit-button")) {
         handleEditMenu(id);

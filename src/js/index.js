@@ -1,56 +1,14 @@
 import { $ } from "../utils/dom.js";
-const BASE_URL = "http://localhost:3000/api";
-
+import { MenuApi } from "./api/index.js";
 function App() {
-  const MenuApi = {
-    async getAllMenuByCategory(category) {
-      console.log("here");
-      const currentMenuList = await fetch(
-        `${BASE_URL}/category/${category}/menu`
-      ).then((res) => res.json());
-      return currentMenuList;
-    },
-    async addMenu(name, category) {
-      const data = await fetch(`${BASE_URL}/category/${category}/menu`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name }),
-      }).then((res) => res.json());
-      console.log("추가된 menu:", data);
-    },
-    async editMenu(category, id, name) {
-      const data = await fetch(`${BASE_URL}/category/${category}/menu/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name }),
-      }).then((res) => res.json());
-      console.log("수정된 data: ", data);
-    },
-    async toggleSoldoutMenu(category, id) {
-      const data = await fetch(
-        `${BASE_URL}/category/${category}/menu/${id}/soldout`,
-        { method: "PUT" }
-      );
-      console.log("품절처리한 data: ", data.json());
-    },
-    async deleteMenu(category, id) {
-      const data = await fetch(`${BASE_URL}/category/${category}/menu/${id}`, {
-        method: "DELETE",
-      });
-      console.log("삭제된 data:", data);
-    },
-  };
   //* Core
   this.init = async () => {
-    this.setState({ category: "espresso" });
-    const currentMenuList = await MenuApi.getAllMenuByCategory(
-      this.state.category
-    );
-    this.setState({ [this.state.category]: currentMenuList });
+    const defaultCategory = "espresso";
+    const currentMenuList = await MenuApi.getAllMenuByCategory(defaultCategory);
+    this.setState({
+      category: defaultCategory,
+      [defaultCategory]: currentMenuList,
+    });
     setEvent();
   };
 
@@ -123,42 +81,66 @@ function App() {
   };
 
   //* Event처리
-  const handleAddMenu = async (name) => {
+  const handleAddMenu = async () => {
+    const name = $("#menu-name").value;
+    if (!name) return;
+
     const category = this.state.category;
+    const duplicatedItem = this.state[category].find(
+      (menu) => menu.name === name
+    );
+
+    if (duplicatedItem) {
+      alert("이미 등록된 메뉴입니다. 다시 입력해주세요.");
+      $("#menu-name").value = "";
+      return;
+    }
     await MenuApi.addMenu(name, category);
-    const currentMenuList = await MenuApi.getAllMenuByCategory(category);
-    this.setState({ [category]: currentMenuList });
+    this.setState({ [category]: await MenuApi.getAllMenuByCategory(category) });
+
+    $("#menu-name").value = "";
   };
   const handleEditMenu = async (id) => {
     const category = this.state.category;
     const menuName = this.state[category].find((menu) => menu.id === id).name;
     const editedMenuName = prompt("수정 할 메뉴이름은 무엇인가요?", menuName);
-
     if (!editedMenuName) return;
+
+    const duplicatedItem = this.state[category].find(
+      (menu) => menu.name === editedMenuName
+    );
+    if (duplicatedItem) {
+      alert("이미 등록된 메뉴입니다. 다시 입력해주세요.");
+      return;
+    }
+
     await MenuApi.editMenu(category, id, editedMenuName);
-    const currentMenuList = await MenuApi.getAllMenuByCategory(category);
-    this.setState({ [category]: currentMenuList });
+
+    this.setState({ [category]: await MenuApi.getAllMenuByCategory(category) });
   };
   const handleRemoveMenu = async (id) => {
-    if (!confirm(`정말 ${id}번 메뉴를 삭제하시겠습니까?`)) return;
+    const menuName = this.state[this.state.category].find(
+      (menu) => menu.id === id
+    ).name;
+    if (!confirm(`정말 ${menuName}를 삭제하시겠습니까?`)) return;
 
     const category = this.state.category;
     await MenuApi.deleteMenu(category, id);
-
-    const currentMenuList = await MenuApi.getAllMenuByCategory(category);
-    this.setState({ [category]: currentMenuList });
+    this.setState({ [category]: await MenuApi.getAllMenuByCategory(category) });
   };
 
   const handleClickSoldout = async (id) => {
     const category = this.state.category;
     await MenuApi.toggleSoldoutMenu(category, id);
 
-    const currentMenuList = await MenuApi.getAllMenuByCategory(category);
-    this.setState({ [category]: currentMenuList });
+    this.setState({ [category]: await MenuApi.getAllMenuByCategory(category) });
   };
 
-  const handleChangeCategory = (category) => {
-    this.setState({ category });
+  const handleChangeCategory = async (category) => {
+    this.setState({
+      category,
+      [category]: await MenuApi.getAllMenuByCategory(category),
+    });
   };
 
   const setEvent = () => {
@@ -168,18 +150,10 @@ function App() {
 
     $("#menu-name").addEventListener("keyup", ({ key }) => {
       if (key !== "Enter") return;
-      const $input = $("#menu-name");
-      if ($input.value === "") return;
-      handleAddMenu($input.value);
-      $input.value = "";
+      handleAddMenu();
     });
 
-    $("#menu-submit-button").addEventListener("click", () => {
-      const $input = $("#menu-name");
-      if ($input.value === "") return;
-      handleAddMenu($input.value);
-      $input.value = "";
-    });
+    $("#menu-submit-button").addEventListener("click", handleAddMenu);
 
     $("#menu-list").addEventListener("click", ({ target }) => {
       const id = target.closest("[data-id]").dataset.id;
